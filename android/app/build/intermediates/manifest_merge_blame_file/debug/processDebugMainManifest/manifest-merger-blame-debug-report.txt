@@ -1,0 +1,162 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.xmusic.player"
+4    android:versionCode="1"
+5    android:versionName="2.1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:2:5-66
+11-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:2:22-64
+12    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+12-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:3:5-74
+12-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:3:22-72
+13    <uses-permission
+13-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:4:5-106
+14        android:name="android.permission.READ_EXTERNAL_STORAGE"
+14-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:4:22-77
+15        android:maxSdkVersion="32" />
+15-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:4:78-104
+16    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+16-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:5:5-76
+16-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:5:22-74
+17    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+17-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:6:5-91
+17-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:6:22-89
+18    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+18-->[androidx.media3:media3-common:1.5.1] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/6e7ab338e110d3fd37b31b158a5b376b/transformed/media3-common-1.5.1/AndroidManifest.xml:22:5-79
+18-->[androidx.media3:media3-common:1.5.1] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/6e7ab338e110d3fd37b31b158a5b376b/transformed/media3-common-1.5.1/AndroidManifest.xml:22:22-76
+19
+20    <permission
+20-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:22:5-24:47
+21        android:name="com.xmusic.player.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+21-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:23:9-81
+22        android:protectionLevel="signature" />
+22-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:24:9-44
+23
+24    <uses-permission android:name="com.xmusic.player.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+24-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:26:5-97
+24-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:26:22-94
+25
+26    <application
+26-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:8:5-31:19
+27        android:allowBackup="true"
+27-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:11:9-35
+28        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+28-->[androidx.core:core:1.15.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fa878627c27074b90ee4432ac9a17c8a/transformed/core-1.15.0/AndroidManifest.xml:28:18-86
+29        android:debuggable="true"
+30        android:extractNativeLibs="false"
+31        android:label="XMusic"
+31-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:10:9-31
+32        android:supportsRtl="true"
+32-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:12:9-35
+33        android:theme="@style/Theme.XMusic" >
+33-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:9:9-44
+34        <activity
+34-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:13:9-20:20
+35            android:name="com.xmusic.player.MainActivity"
+35-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:14:13-41
+36            android:exported="true" >
+36-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:15:13-36
+37            <intent-filter>
+37-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:16:13-19:29
+38                <action android:name="android.intent.action.MAIN" />
+38-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:17:17-68
+38-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:17:25-66
+39
+40                <category android:name="android.intent.category.LAUNCHER" />
+40-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:18:17-76
+40-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:18:27-74
+41            </intent-filter>
+42        </activity>
+43
+44        <service
+44-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:22:9-30:19
+45            android:name="com.xmusic.player.player.XMusicPlaybackService"
+45-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:23:13-57
+46            android:exported="true"
+46-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:24:13-36
+47            android:foregroundServiceType="mediaPlayback" >
+47-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:25:13-58
+48            <intent-filter>
+48-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:26:13-29:29
+49                <action android:name="androidx.media3.session.MediaSessionService" />
+49-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:27:17-85
+49-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:27:25-83
+50                <action android:name="android.media.browse.MediaBrowserService" />
+50-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:28:17-82
+50-->/data/data/com.termux/files/home/Xmusic-final-build/android/app/src/main/AndroidManifest.xml:28:25-80
+51            </intent-filter>
+52        </service>
+53
+54        <provider
+54-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+55            android:name="androidx.startup.InitializationProvider"
+55-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
+56            android:authorities="com.xmusic.player.androidx-startup"
+56-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
+57            android:exported="false" >
+57-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
+58            <meta-data
+58-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+59                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+59-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+60                android:value="androidx.startup" />
+60-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/fbadf3cf12f12148cbaea21f16df00f7/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+61            <meta-data
+61-->[androidx.lifecycle:lifecycle-process:2.8.7] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/8903f1eaf9d76eb748f3ff6e9424de82/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:29:13-31:52
+62                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+62-->[androidx.lifecycle:lifecycle-process:2.8.7] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/8903f1eaf9d76eb748f3ff6e9424de82/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:30:17-78
+63                android:value="androidx.startup" />
+63-->[androidx.lifecycle:lifecycle-process:2.8.7] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/8903f1eaf9d76eb748f3ff6e9424de82/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:31:17-49
+64            <meta-data
+64-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:29:13-31:52
+65                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+65-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:30:17-85
+66                android:value="androidx.startup" />
+66-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:31:17-49
+67        </provider>
+68
+69        <receiver
+69-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:34:9-52:20
+70            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+70-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:35:13-76
+71            android:directBootAware="false"
+71-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:36:13-44
+72            android:enabled="true"
+72-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:37:13-35
+73            android:exported="true"
+73-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:38:13-36
+74            android:permission="android.permission.DUMP" >
+74-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:39:13-57
+75            <intent-filter>
+75-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:40:13-42:29
+76                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+76-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:17-91
+76-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:25-88
+77            </intent-filter>
+78            <intent-filter>
+78-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:43:13-45:29
+79                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+79-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:17-85
+79-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:25-82
+80            </intent-filter>
+81            <intent-filter>
+81-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:46:13-48:29
+82                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+82-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:17-88
+82-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:25-85
+83            </intent-filter>
+84            <intent-filter>
+84-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:49:13-51:29
+85                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+85-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:17-95
+85-->[androidx.profileinstaller:profileinstaller:1.4.0] /data/data/com.termux/files/home/.gradle/caches/9.6.0/transforms/03a30b13500cd78ec73528eeda045c25/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:25-92
+86            </intent-filter>
+87        </receiver>
+88    </application>
+89
+90</manifest>
