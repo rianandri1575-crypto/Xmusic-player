@@ -47,7 +47,7 @@ private class XMusicRenderersFactory(context: Context) : DefaultRenderersFactory
     ): AudioSink {
         return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(XMusicAudioProcessor()))
-            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableFloatOutput(false)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
     }

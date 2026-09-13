@@ -50,27 +50,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         EqualizerState.setAll(prefs.loadEq())
-        val token = SessionToken(this, ComponentName(this, XMusicPlaybackService::class.java))
-        val future = MediaController.Builder(this, token).buildAsync()
-        future.addListener({
-            try {
-                val c = future.get()
-                controller = c
-                val listener = object : androidx.media3.common.Player.Listener {
-                    override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
-                        nowPlayingTitle = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "Belum ada lagu"
-                        nowPlayingPlaying = player.isPlaying
-                    }
-                }
-                controllerListener = listener
-                c.addListener(listener)
-                nowPlayingTitle = c.currentMediaItem?.mediaMetadata?.title?.toString() ?: "Belum ada lagu"
-                nowPlayingPlaying = c.isPlaying
-            } catch (e: Exception) {
-                controller = null
-                message = "Player gagal disiapkan: ${e.message ?: "koneksi service gagal"}"
-            }
-        }, mainExecutor)
+        // Do not start MediaSession/ExoPlayer during app launch.
+        // The player is connected lazily when the user actually starts playback.
+        // This keeps the UI boot path independent from the playback service.
         setContent { XMusicApp() }
     }
 
@@ -94,14 +76,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun ensureController(onReady: (MediaController) -> Unit) {
+        controller?.let(onReady)
+            ?: run {
+                val token = SessionToken(this, ComponentName(this, XMusicPlaybackService::class.java))
+                val future = MediaController.Builder(this, token).buildAsync()
+                future.addListener({
+                    try {
+                        val c = future.get()
+                        controller = c
+                        val listener = object : androidx.media3.common.Player.Listener {
+                            override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
+                                nowPlayingTitle = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "Belum ada lagu"
+                                nowPlayingPlaying = player.isPlaying
+                            }
+                        }
+                        controllerListener = listener
+                        c.addListener(listener)
+                        nowPlayingTitle = c.currentMediaItem?.mediaMetadata?.title?.toString() ?: "Belum ada lagu"
+                        nowPlayingPlaying = c.isPlaying
+                        onReady(c)
+                    } catch (e: Exception) {
+                        controller = null
+                        message = "Player gagal disiapkan: ${e.message ?: "koneksi service gagal"}"
+                        resolving = null
+                    }
+                }, mainExecutor)
+            }
+    }
+
     private fun play(video: YouTubeRepository.Video) {
         resolving = video.id; message = "Menyiapkan audio…"
         executor.execute {
             try {
                 val stream = repo.resolveAudio(video.id)
                 runOnUiThread {
-                    val c = controller
-                    if (c == null) { resolving = null; message = "Player belum siap"; return@runOnUiThread }
+                    ensureController { c ->
                     val item = MediaItem.Builder()
                         .setMediaId(video.id)
                         .setUri(stream.url)
@@ -121,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     nowPlayingPlaying = true
                     resolving = null
                     message = "Memutar"
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread { resolving = null; message = "Audio gagal dimuat: ${e.message ?: "resolver error"}" }

@@ -22,3 +22,8 @@
 ## Kotlin compile fix
 - Replaced ambiguous positional Compose `Slider`/`Switch` calls with named arguments and explicit lambda parameters in `MainActivity.kt`.
 - Fixes Kotlin 2.x overload-resolution / unresolved `it` errors reported around EQ and Crossover controls.
+
+
+## Runtime hardening follow-up
+- MediaController/MediaSession connection is now lazy instead of happening during Activity startup.
+- Custom PCM-16 DSP explicitly disables Media3 float output to avoid an unsupported PCM_FLOAT format reaching XMusicAudioProcessor.
