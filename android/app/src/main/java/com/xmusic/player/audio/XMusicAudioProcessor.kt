@@ -47,6 +47,9 @@ class XMusicAudioProcessor : AudioProcessor {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
+        if (inputAudioFormat.sampleRate <= 0 || inputAudioFormat.channelCount <= 0) {
+            throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
+        }
         sampleRate = inputAudioFormat.sampleRate
         channels = inputAudioFormat.channelCount.coerceAtLeast(1)
         outputAudioFormat = inputAudioFormat
@@ -76,6 +79,9 @@ class XMusicAudioProcessor : AudioProcessor {
                 val bank = if (ch == 0) filtersL else filtersR
                 var y = x
                 for (i in 0 until 31) y = bank[i].process(y)
+                // DSP safety: if any filter diverges to NaN/Infinity, pass the raw
+                // sample through instead of letting bad state poison the whole chain.
+                if (!y.isFinite()) y = x
 
                 val c = CrossoverState.config.value
                 if (c.enabled) {

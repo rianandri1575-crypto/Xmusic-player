@@ -1,9 +1,16 @@
 package com.xmusic.player
 
+import android.Manifest
 import android.content.ComponentName
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,6 +52,9 @@ private val XAccent = Color(0xFF00D8FF)
 class MainActivity : ComponentActivity() {
     private var controller by mutableStateOf<MediaController?>(null)
     private var controllerListener: androidx.media3.common.Player.Listener? = null
+    private var controllerPending = false
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private var nowPlayingTitle by mutableStateOf("Belum ada lagu")
     private var nowPlayingArtist by mutableStateOf("")
     private var nowPlayingPlaying by mutableStateOf(false)
@@ -59,11 +69,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         prefs = Prefs(this)
+        // Android 13+ (API 33): media notification requires a runtime permission.
+        if (Build.VERSION.SDK_INT >= 33) {
+            Handler(Looper.getMainLooper()).post {
+                if (!isFinishing && !isDestroyed) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
         setContent { XMusicApp() }
     }
 
     override fun onDestroy() {
+        controllerPending = false
         controller?.let { c -> controllerListener?.let(c::removeListener); c.release() }
         controller = null
         executor.shutdownNow()
@@ -96,9 +116,14 @@ class MainActivity : ComponentActivity() {
 
     private fun ensureController(onReady: (MediaController) -> Unit) {
         controller?.let(onReady) ?: run {
+            // Guard against duplicate async builds (double-tap on play).
+            if (controllerPending) return
+            controllerPending = true
             val token = SessionToken(this, ComponentName(this, XMusicPlaybackService::class.java))
             val future = MediaController.Builder(this, token).buildAsync()
             future.addListener({
+                controllerPending = false
+                if (isDestroyed) return@addListener
                 try {
                     val c = future.get()
                     controller = c
@@ -120,7 +145,7 @@ class MainActivity : ComponentActivity() {
                     resolving = null
                     error = "Player belum siap. Coba putar lagi."
                 }
-            }, mainExecutor)
+            }, ContextCompat.getMainExecutor(this))
         }
     }
 

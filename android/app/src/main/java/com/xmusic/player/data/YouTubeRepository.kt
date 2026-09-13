@@ -30,6 +30,7 @@ class YouTubeRepository {
     )
 
     private var discoveredInstances: List<String>? = null
+    @Volatile private var bannedInstances: Set<String> = emptySet()
 
     private fun instances(): List<String> {
         discoveredInstances?.let { return it }
@@ -60,7 +61,7 @@ class YouTubeRepository {
         require(query.isNotBlank()) { "Query kosong" }
         val q = URLEncoder.encode(query.trim(), Charsets.UTF_8.name())
         var last: Exception? = null
-        for (base in instances()) {
+        for (base in instances().filterNot { it in bannedInstances }) {
             try {
                 val arr = JSONArray(get("$base/search?q=$q&filter=music_songs"))
                 val out = ArrayList<Video>()
@@ -72,7 +73,11 @@ class YouTubeRepository {
                     out += Video(id, clean(o.optString("title"), "Unknown"), clean(o.optString("uploaderName"), "Unknown artist"), o.optLong("duration", 0), o.optString("thumbnail", ""))
                 }
                 return out.distinctBy { it.id }
-            } catch (e: Exception) { last = e }
+            } catch (e: Exception) {
+                last = e
+                // Remember dead/unreachable instances so later requests skip them quickly.
+                if (bannedInstances.size > 3) bannedInstances = emptySet() else bannedInstances = bannedInstances + base
+            }
         }
         throw last ?: IllegalStateException("Tidak ada resolver tersedia")
     }
@@ -80,7 +85,7 @@ class YouTubeRepository {
     fun resolveAudio(videoId: String): VideoStreamResult {
         require(videoId.isNotBlank()) { "Video ID kosong" }
         var last: Exception? = null
-        for (base in instances()) {
+        for (base in instances().filterNot { it in bannedInstances }) {
             try {
                 val o = JSONObject(get("$base/streams/${URLEncoder.encode(videoId, Charsets.UTF_8.name())}"))
                 val audio = o.optJSONArray("audioStreams") ?: JSONArray()
@@ -95,7 +100,10 @@ class YouTubeRepository {
                 val best = candidates.maxWithOrNull(compareBy<Stream> { it.bitrate }.thenBy { it.quality.length })
                     ?: error("Resolver tidak mengembalikan audio")
                 return VideoStreamResult(best.url, best.mimeType)
-            } catch (e: Exception) { last = e }
+            } catch (e: Exception) {
+                last = e
+                if (bannedInstances.size > 3) bannedInstances = emptySet() else bannedInstances = bannedInstances + base
+            }
         }
         throw last ?: IllegalStateException("Audio tidak dapat di-resolve")
     }

@@ -61,6 +61,11 @@ class Biquad {
     fun reset() { z1 = 0.0; z2 = 0.0 }
 
     fun process(x: Double): Double {
+        if (!x.isFinite()) {
+            // Reject NaN/Infinity input and reset filter state so it cannot poison later samples.
+            reset()
+            return 0.0
+        }
         val y = b0 * x + z1
         z1 = b1 * x - a1 * y + z2
         z2 = b2 * x - a2 * y
