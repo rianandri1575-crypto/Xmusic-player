@@ -8,11 +8,11 @@ class Prefs(context: Context) {
     private val p = context.getSharedPreferences("xmusic", Context.MODE_PRIVATE)
 
     var accent: Long
-        get() = runCatching { p.getLong("accent", 0xFF00D4FF) }.getOrDefault(0xFF00D4FF)
+        get() = p.getLong("accent", 0xFF00D4FF)
         set(v) = p.edit().putLong("accent", v).apply()
 
     var supporter: Boolean
-        get() = runCatching { p.getBoolean("supporter", false) }.getOrDefault(false)
+        get() = p.getBoolean("supporter", false)
         set(v) = p.edit().putBoolean("supporter", v).apply()
 
     fun saveEq(gains: FloatArray) {
