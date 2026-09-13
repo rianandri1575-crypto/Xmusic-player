@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        EqualizerState.setAll(prefs.loadEq())
+        // Startup must stay completely independent from persisted DSP/player state.
+        // EQ values are restored only when the EQ screen is opened.
         // Do not start MediaSession/ExoPlayer during app launch.
         // The player is connected lazily when the user actually starts playback.
         // This keeps the UI boot path independent from the playback service.
@@ -143,7 +144,8 @@ class MainActivity : ComponentActivity() {
     private fun XMusicApp() {
         var tab by remember { mutableIntStateOf(0) }
         var query by remember { mutableStateOf("") }
-        val accent = Color(prefs.accent.toULong())
+        // Keep the launch path independent from potentially stale persisted values.
+        val accent = Color(0xFF00D4FF)
         val nav = listOf("YouTube", "Library", "EQ", "Crossover", "Analyzer", "Settings")
         MaterialTheme(colorScheme = darkColorScheme(primary = accent, background = Color(0xFF07080B), surface = Color(0xFF11131A))) {
             Scaffold(
@@ -270,6 +272,9 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable private fun EqPage(modifier: Modifier) {
+        LaunchedEffect(Unit) {
+            runCatching { EqualizerState.setAll(prefs.loadEq()) }
+        }
         val freqs = remember { listOf(20,25,31,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000) }
         val gains by EqualizerState.gains.collectAsState()
         Column(modifier.fillMaxSize().padding(18.dp)) {
