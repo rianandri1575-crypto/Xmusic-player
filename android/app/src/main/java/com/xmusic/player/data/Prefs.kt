@@ -1,6 +1,7 @@
 package com.xmusic.player.data
 
 import android.content.Context
+import com.xmusic.player.audio.CrossoverConfig
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -23,6 +24,29 @@ class Prefs(context: Context) {
         val s = p.getString("eq", null) ?: return FloatArray(31)
         return s.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
             .let { if (it.size == 31) it else FloatArray(31) }
+    }
+
+    fun saveCrossover(c: CrossoverConfig) {
+        p.edit().putString(
+            "crossover",
+            "${c.enabled},${c.lowHz},${c.highHz},${c.slopeDb},${c.lowGainDb},${c.midGainDb},${c.highGainDb}"
+        ).apply()
+    }
+
+    fun loadCrossover(): CrossoverConfig {
+        val s = p.getString("crossover", null) ?: return CrossoverConfig()
+        return try {
+            val a = s.split(",")
+            CrossoverConfig(
+                enabled = a.getOrNull(0)?.toBooleanStrictOrNull() ?: true,
+                lowHz = a.getOrNull(1)?.toFloatOrNull() ?: 80f,
+                highHz = a.getOrNull(2)?.toFloatOrNull() ?: 2500f,
+                slopeDb = a.getOrNull(3)?.toIntOrNull() ?: 24,
+                lowGainDb = a.getOrNull(4)?.toFloatOrNull() ?: 0f,
+                midGainDb = a.getOrNull(5)?.toFloatOrNull() ?: 0f,
+                highGainDb = a.getOrNull(6)?.toFloatOrNull() ?: 0f
+            )
+        } catch (_: Exception) { CrossoverConfig() }
     }
 
     fun isFavorite(id: String): Boolean = favorites().any { it.id == id }

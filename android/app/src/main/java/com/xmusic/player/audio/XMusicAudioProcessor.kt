@@ -27,10 +27,13 @@ class XMusicAudioProcessor : AudioProcessor {
 
     private val filtersL = Array(31) { Biquad() }
     private val filtersR = Array(31) { Biquad() }
-    private val lowL = Biquad(); private val lowR = Biquad()
-    private val highL = Biquad(); private val highR = Biquad()
-    private val midLowL = Biquad(); private val midLowR = Biquad()
-    private val midHighL = Biquad(); private val midHighR = Biquad()
+
+    // 3-band crossover banks: up to 4 cascaded 2nd-order stages per band per channel,
+    // so 12/24/36/48 dB-per-octave slopes are implemented for real (Linkwitz-Riley Q=0.707).
+    private val lowL = Array(4) { Biquad() }; private val lowR = Array(4) { Biquad() }
+    private val highL = Array(4) { Biquad() }; private val highR = Array(4) { Biquad() }
+    private val midLowL = Array(4) { Biquad() }; private val midLowR = Array(4) { Biquad() }
+    private val midHighL = Array(4) { Biquad() }; private val midHighR = Array(4) { Biquad() }
 
     private val frequencies = doubleArrayOf(
         20.0,25.0,31.5,40.0,50.0,63.0,80.0,100.0,125.0,160.0,
@@ -71,8 +74,11 @@ class XMusicAudioProcessor : AudioProcessor {
         buffer.clear()
         val input = inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val frameBytes = channels * 2
+        val crossoverConfig = CrossoverState.config.value
+        val crossStages = (crossoverConfig.slopeDb / 12).coerceIn(1, 4)
 
         while (input.remaining() >= frameBytes) {
+            var frameSum = 0.0
             for (ch in 0 until channels) {
                 val raw = input.short.toInt()
                 val x = raw / 32768.0
@@ -83,28 +89,34 @@ class XMusicAudioProcessor : AudioProcessor {
                 // sample through instead of letting bad state poison the whole chain.
                 if (!y.isFinite()) y = x
 
-                val c = CrossoverState.config.value
-                if (c.enabled) {
-                    y = processCrossover(y, ch, c)
+                if (crossoverConfig.enabled) {
+                    y = processCrossover(y, ch, crossoverConfig, crossStages)
                 }
 
                 // Transparent below 0 dBFS; only engage the soft limiter on overload.
-                // This avoids changing every sample when EQ/crossover are flat.
                 val limited = if (abs(y) <= 1.0) y else tanh(y * 0.95) / tanh(0.95)
-                if (ch == 0) feedAnalyzer(limited.toFloat())
+                frameSum += limited
                 val out = (limited.coerceIn(-1.0, 1.0) * 32767.0).toInt()
                 buffer.putShort(out.toShort())
             }
+            feedAnalyzer((frameSum / channels).toFloat())
         }
         inputBuffer.position(input.position())
         buffer.flip()
     }
 
-    private fun processCrossover(x: Double, ch: Int, c: CrossoverConfig): Double {
-        val low = if (ch == 0) lowL.process(x) else lowR.process(x)
-        val hpAtLow = if (ch == 0) midLowL.process(x) else midLowR.process(x)
-        val high = if (ch == 0) highL.process(x) else highR.process(x)
-        val mid = if (ch == 0) midHighL.process(hpAtLow) else midHighR.process(hpAtLow)
+    private fun processCrossover(x: Double, ch: Int, c: CrossoverConfig, stages: Int): Double {
+        var low = x
+        var mid = x
+        var high = x
+        for (i in 0 until stages) {
+            low = (if (ch == 0) lowL[i] else lowR[i]).process(low)
+            mid = (if (ch == 0) midLowL[i] else midLowR[i]).process(mid)
+            high = (if (ch == 0) highL[i] else highR[i]).process(high)
+        }
+        for (i in 0 until stages) {
+            mid = (if (ch == 0) midHighL[i] else midHighR[i]).process(mid)
+        }
         return low * db(c.lowGainDb) + mid * db(c.midGainDb) + high * db(c.highGainDb)
     }
 
@@ -151,7 +163,7 @@ class XMusicAudioProcessor : AudioProcessor {
         buffer = AudioProcessor.EMPTY_BUFFER
         ended = false
         filtersL.forEach { it.reset() }; filtersR.forEach { it.reset() }
-        listOf(lowL, lowR, highL, highR, midLowL, midLowR, midHighL, midHighR).forEach { it.reset() }
+        listOf(lowL, lowR, highL, highR, midLowL, midLowR, midHighL, midHighR).forEach { bank -> bank.forEach { it.reset() } }
         if (configured) updateFilters(force = true)
     }
 
@@ -181,17 +193,35 @@ class XMusicAudioProcessor : AudioProcessor {
     }
 
     private fun configureCrossover(c: CrossoverConfig) {
+        val sr = sampleRate.toDouble().coerceAtLeast(8000.0)
+        val stages = (c.slopeDb / 12).coerceIn(1, 4)
+        // Linkwitz-Riley: cascaded 2nd-order Butterworth stages (Q = 1/√2) so the bands
+        // sum back to a flat/transparent response when all gains are 0 dB.
+        val q = 0.7071
+        val banks = listOf(lowL, lowR, highL, highR, midLowL, midLowR, midHighL, midHighR)
+        banks.forEach { bank -> bank.forEach { it.reset() } }
         if (!c.enabled) {
-            listOf(lowL, lowR, highL, highR, midLowL, midLowR, midHighL, midHighR).forEach { it.configure(sampleRate.toDouble(), 1000.0, 0.707, 0.0) }
+            // Bypass: identity transfer through every stage.
+            banks.forEach { bank -> bank.forEach { it.configure(sr, 1000.0, 0.0, 0.707) } }
             return
         }
-        val q = when (c.slopeDb) { 12 -> 0.707; 24 -> 0.5412; 36 -> 0.4595; else -> 0.42 }
-        val lowHz = c.lowHz.toDouble().coerceIn(20.0, sampleRate / 2.0 - 100.0)
-        val highHz = c.highHz.toDouble().coerceIn(lowHz + 20.0, sampleRate / 2.0 - 50.0)
-        lowL.configureLowPass(sampleRate.toDouble(), lowHz, q); lowR.configureLowPass(sampleRate.toDouble(), lowHz, q)
-        midLowL.configureHighPass(sampleRate.toDouble(), lowHz, q); midLowR.configureHighPass(sampleRate.toDouble(), lowHz, q)
-        midHighL.configureLowPass(sampleRate.toDouble(), highHz, q); midHighR.configureLowPass(sampleRate.toDouble(), highHz, q)
-        highL.configureHighPass(sampleRate.toDouble(), highHz, q); highR.configureHighPass(sampleRate.toDouble(), highHz, q)
+        val lowHz = c.lowHz.toDouble().coerceIn(20.0, sr / 2.0 - 100.0)
+        val highHz = c.highHz.toDouble().coerceIn(lowHz + 20.0, sr / 2.0 - 50.0)
+        for (i in 0 until 4) {
+            if (i < stages) {
+                lowL[i].configureLowPass(sr, lowHz, q); lowR[i].configureLowPass(sr, lowHz, q)
+                midLowL[i].configureHighPass(sr, lowHz, q); midLowR[i].configureHighPass(sr, lowHz, q)
+                midHighL[i].configureLowPass(sr, highHz, q); midHighR[i].configureLowPass(sr, highHz, q)
+                highL[i].configureHighPass(sr, highHz, q); highR[i].configureHighPass(sr, highHz, q)
+            } else {
+                // Unused stages must be transparent; otherwise stale coefficients
+                // from a previous higher-slope setting would keep filtering.
+                lowL[i].configure(sr, 1000.0, 0.0, 0.707); lowR[i].configure(sr, 1000.0, 0.0, 0.707)
+                midLowL[i].configure(sr, 1000.0, 0.0, 0.707); midLowR[i].configure(sr, 1000.0, 0.0, 0.707)
+                midHighL[i].configure(sr, 1000.0, 0.0, 0.707); midHighR[i].configure(sr, 1000.0, 0.0, 0.707)
+                highL[i].configure(sr, 1000.0, 0.0, 0.707); highR[i].configure(sr, 1000.0, 0.0, 0.707)
+            }
+        }
     }
 
     private fun db(gain: Float): Double = 10.0.pow(gain / 20.0)

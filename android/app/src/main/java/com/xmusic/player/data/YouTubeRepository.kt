@@ -88,18 +88,36 @@ class YouTubeRepository {
         for (base in instances().filterNot { it in bannedInstances }) {
             try {
                 val o = JSONObject(get("$base/streams/${URLEncoder.encode(videoId, Charsets.UTF_8.name())}"))
-                val audio = o.optJSONArray("audioStreams") ?: JSONArray()
                 val candidates = ArrayList<Stream>()
-                for (i in 0 until audio.length()) {
-                    val a = audio.optJSONObject(i) ?: continue
-                    val url = a.optString("url")
-                    val mime = a.optString("mimeType")
-                    if (url.isBlank() || !mime.startsWith("audio/")) continue
-                    candidates += Stream(url, mime, a.optInt("bitrate", 0), a.optString("quality", ""))
+                fun collect(arr: JSONArray?, allowVideoMux: Boolean) {
+                    if (arr == null) return
+                    for (i in 0 until arr.length()) {
+                        val a = arr.optJSONObject(i) ?: continue
+                        val url = a.optString("url").trim()
+                        val mime = sanitizeMime(a.optString("mimeType"))
+                        if (url.isBlank() || mime.isBlank() || isPlaceholder(url)) continue
+                        val isAudio = mime.startsWith("audio/")
+                        val isVideoMux = allowVideoMux && mime.startsWith("video/") && !a.optBoolean("videoOnly", true)
+                        if (isAudio || isVideoMux) {
+                            candidates += Stream(url, mime, a.optInt("bitrate", 0), a.optString("quality", ""))
+                        }
+                    }
                 }
-                val best = candidates.maxWithOrNull(compareBy<Stream> { it.bitrate }.thenBy { it.quality.length })
-                    ?: error("Resolver tidak mengembalikan audio")
-                return VideoStreamResult(best.url, best.mimeType)
+                collect(o.optJSONArray("audioStreams"), false)
+                if (candidates.isEmpty()) collect(o.optJSONArray("videoStreams"), true)
+                if (candidates.isEmpty()) error("Resolver tidak mengembalikan audio")
+
+                // Prefer the highest-bitrate candidate whose URL actually responds,
+                // then fall back to the next candidate if a URL is dead/expired.
+                val sorted = candidates.sortedByDescending { it.bitrate }
+                var success: Stream? = null
+                var failed: Exception? = null
+                for (s in sorted.take(4)) {
+                    if (isStreamLive(s.url)) { success = s; break }
+                    failed = java.io.IOException("Stream offline: HTTP unavailable")
+                }
+                if (success != null) return VideoStreamResult(success.url, success.mimeType)
+                throw failed ?: error("Audio tidak dapat diputar")
             } catch (e: Exception) {
                 last = e
                 if (bannedInstances.size > 3) bannedInstances = emptySet() else bannedInstances = bannedInstances + base
@@ -108,13 +126,40 @@ class YouTubeRepository {
         throw last ?: IllegalStateException("Audio tidak dapat di-resolve")
     }
 
+    /** Strip codec parameters so ExoPlayer can map the exact base MIME type. */
+    private fun sanitizeMime(mime: String): String = mime.substringBefore(';').trim()
+
+    /** Piped sometimes returns non-playable placeholders instead of real stream URLs. */
+    private fun isPlaceholder(url: String): Boolean {
+        if (url == "HLS_MMUS" || url.startsWith("HLS_MMUS")) return true
+        if (url.contains("youtube.com/watch") || url.contains("youtu.be/")) return true
+        return url.endsWith(".m3u8") && !url.startsWith("https://") // local manifest path
+    }
+
+    /** Cheap existence probe: ranged GET of the first bytes must return 200/206. */
+    private fun isStreamLive(url: String): Boolean = runCatching {
+        val c = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 4000
+            readTimeout = 4000
+            useCaches = false
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
+            setRequestProperty("Range", "bytes=0-64")
+        }
+        try {
+            val code = c.responseCode
+            code == 200 || code == 206
+        } finally { c.disconnect() }
+    }.getOrDefault(false)
+
     private fun get(url: String, connectTimeout: Int = 7000, readTimeout: Int = 15000): String {
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             this.connectTimeout = connectTimeout
             this.readTimeout = readTimeout
             useCaches = false
-            setRequestProperty("User-Agent", "XMusic/2.2")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
             setRequestProperty("Accept", "application/json")
         }
         try {
