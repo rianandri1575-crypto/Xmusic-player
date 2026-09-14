@@ -46,7 +46,7 @@ class XMusicAudioProcessor : AudioProcessor {
     private var lastCross = CrossoverConfig(enabled = false)
 
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
@@ -73,15 +73,21 @@ class XMusicAudioProcessor : AudioProcessor {
         }
         buffer.clear()
         val input = inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        val frameBytes = channels * 2
+        val isFloat = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        val frameBytes = channels * (if (isFloat) 4 else 2)
         val crossoverConfig = CrossoverState.config.value
         val crossStages = (crossoverConfig.slopeDb / 12).coerceIn(1, 4)
 
         while (input.remaining() >= frameBytes) {
             var frameSum = 0.0
             for (ch in 0 until channels) {
-                val raw = input.short.toInt()
-                val x = raw / 32768.0
+                val x: Double
+                if (isFloat) {
+                    x = input.float.toDouble()
+                } else {
+                    val raw = input.short.toInt()
+                    x = raw / 32768.0
+                }
                 val bank = if (ch == 0) filtersL else filtersR
                 var y = x
                 for (i in 0 until 31) y = bank[i].process(y)
@@ -96,8 +102,12 @@ class XMusicAudioProcessor : AudioProcessor {
                 // Transparent below 0 dBFS; only engage the soft limiter on overload.
                 val limited = if (abs(y) <= 1.0) y else tanh(y * 0.95) / tanh(0.95)
                 frameSum += limited
-                val out = (limited.coerceIn(-1.0, 1.0) * 32767.0).toInt()
-                buffer.putShort(out.toShort())
+                if (isFloat) {
+                    buffer.putFloat(limited.toFloat())
+                } else {
+                    val outInt = (limited.coerceIn(-1.0, 1.0) * 32767.0).toInt()
+                    buffer.putShort(outInt.toShort())
+                }
             }
             feedAnalyzer((frameSum / channels).toFloat())
         }
