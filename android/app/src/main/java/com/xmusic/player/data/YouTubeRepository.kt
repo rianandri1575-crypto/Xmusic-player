@@ -8,7 +8,8 @@ import java.net.URL
 
 /** Replaceable online discovery/resolver layer. */
 class YouTubeRepository {
-    data class Video(val id: String, val title: String, val uploader: String, val duration: Long, val thumbnail: String)
+    data class Video(val id: String, val title: String, val uploader: String, val duration: Long, val thumbnail: String, val uploaderUrl: String = "")
+    data class ChannelInfo(val id: String, val name: String, val avatarUrl: String, val bannerUrl: String, val subscriberCount: Long, val description: String, val verified: Boolean, val videoCount: Int)
     data class Stream(val url: String, val mimeType: String, val bitrate: Int, val quality: String)
     data class VideoStreamResult(val url: String, val mimeType: String)
 
@@ -21,7 +22,15 @@ class YouTubeRepository {
         "https://pipedapi.adminforge.de",
         "https://pipedapi.leptons.xyz",
         "https://pipedapi.tokhmi.xyz",
-        "https://api.piped.projectsegfau.lt"
+        "https://api.piped.projectsegfau.lt",
+        "https://pipedapi.nosebs.ru",
+        "https://api.piped.yt",
+        "https://pipedapi.drgns.space",
+        "https://pipedapi.darkness.services",
+        "https://pipedapi.owo.si",
+        "https://pipedapi.reallyaweso.me",
+        "https://piped-api.codespace.cz",
+        "https://pipedapi.orangenet.cc"
     )
 
     private var discoveredInstances: List<String>? = null
@@ -39,9 +48,15 @@ class YouTubeRepository {
             markdown.lineSequence()
                 .filter { it.contains('|') }
                 .mapNotNull { line ->
-                    val columns = line.split('|')
+                    val columns = line.split('|').map { it.trim() }
                     if (columns.size < 3) null
-                    else urlRegex.find(columns[2])?.value?.trimEnd('.', ',', ';')
+                    else {
+                        val raw = columns[2].trimEnd('.', ',', ';', '|').trim()
+                        val match = urlRegex.find(raw)
+                        match?.value?.trimEnd('.', ',', ';', '|')?.let { u ->
+                            if (u.startsWith("https://")) u else null
+                        }
+                    }
                 }
                 .filter { it.startsWith("https://") }
                 .distinct()
@@ -72,7 +87,7 @@ class YouTubeRepository {
                     val rawId = o.optString("id")
                     val id = rawId.ifBlank { o.optString("url").substringAfter("v=", "") }
                     if (id.isBlank()) continue
-                    out += Video(id, clean(o.optString("title"), "Unknown"), clean(o.optString("uploaderName"), "Unknown artist"), o.optLong("duration", 0), o.optString("thumbnail", ""))
+                    out += Video(id, clean(o.optString("title"), "Unknown"), clean(o.optString("uploaderName"), "Unknown artist"), o.optLong("duration", 0), o.optString("thumbnail", ""), clean(o.optString("uploaderUrl"), "").ifBlank { "" })
                 }
                 return out.distinctBy { it.id }
             } catch (e: Exception) {
@@ -138,21 +153,79 @@ class YouTubeRepository {
         return url.endsWith(".m3u8") && !url.startsWith("https://") // local manifest path
     }
 
-    /** Cheap existence probe: ranged GET of the first bytes must return 200/206. */
+    /** Cheap existence probe: ranged GET then fallback full GET. */
     private fun isStreamLive(url: String): Boolean = runCatching {
-        val c = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 4000
-            readTimeout = 4000
-            useCaches = false
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
-            setRequestProperty("Range", "bytes=0-64")
+        val headers = listOf(
+            "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+        )
+        fun tryConnection(userAgent: String): Int {
+            val c = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 4000
+                readTimeout = 4000
+                useCaches = false
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", userAgent)
+                setRequestProperty("Accept", "*/*")
+                setRequestProperty("Range", "bytes=0-64")
+            }
+            return try {
+                val code = c.responseCode
+                c.disconnect()
+                code
+            } catch (_: Exception) {
+                c.disconnect()
+                -1
+            }
         }
-        try {
-            val code = c.responseCode
-            code == 200 || code == 206
-        } finally { c.disconnect() }
+        fun tryFull(userAgent: String): Int {
+            val c = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 4000
+                readTimeout = 4000
+                useCaches = false
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", userAgent)
+                setRequestProperty("Accept", "*/*")
+            }
+            return try {
+                val code = c.responseCode
+                c.disconnect()
+                code
+            } catch (_: Exception) {
+                c.disconnect()
+                -1
+            }
+        }
+        for (ua in headers) {
+            val code = tryConnection(ua)
+            if (code == 200 || code == 206) return true
+        }
+        for (ua in headers) {
+            val code = tryFull(ua)
+            if (code in 200..299) return true
+            if (code == 403) {
+                val c = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 4000
+                    readTimeout = 4000
+                    useCaches = false
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", ua)
+                    setRequestProperty("Referer", "https://piped.video/")
+                    setRequestProperty("Accept", "*/*")
+                }
+                return try {
+                    val r = c.responseCode
+                    c.disconnect()
+                    r in 200..299
+                } catch (_: Exception) {
+                    c.disconnect(); false
+                }
+            }
+        }
+        false
     }.getOrDefault(false)
 
     private fun get(url: String, connectTimeout: Int = 7000, readTimeout: Int = 15000): String {
@@ -170,6 +243,23 @@ class YouTubeRepository {
             return c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally { c.disconnect() }
     }
+
+    fun getChannel(channelId: String): ChannelInfo? = runCatching {
+        val base = instances().firstOrNull { !it.contains("projectsegfau") } ?: instances().firstOrNull() ?: return@runCatching null
+        val o = JSONObject(get("$base/channel/$channelId"))
+        val id = o.optString("id").ifBlank { channelId }
+        val name = clean(o.optString("name"), "Unknown")
+        val avatar = o.optString("avatarUrl")
+        val banner = o.optString("bannerUrl")
+        val subs = o.optLong("subscriberCount", -1)
+        val desc = clean(o.optString("description"), "")
+        val verified = o.optBoolean("verified", false)
+        val videosList = o.optJSONArray("relatedStreams") ?: JSONArray()
+        val videoCount = videosList.length() + if (o.has("videos")) o.getJSONArray("videos").length() else 0
+        ChannelInfo(id, name, avatar, banner, subs, desc, verified, videoCount)
+    }.getOrNull()
+
+    fun searchChannel(query: String): List<Video> = search(query) // reuse; UI can filter by uploader
 
     private fun clean(value: String, fallback: String): String = value.trim().ifBlank { fallback }
 }

@@ -93,6 +93,8 @@ class MainActivity : ComponentActivity() {
     private val repo = YouTubeRepository()
     private val executor = Executors.newSingleThreadExecutor()
     private var results by mutableStateOf<List<YouTubeRepository.Video>>(emptyList())
+    private var channelInfo by mutableStateOf<YouTubeRepository.ChannelInfo?>(null)
+    private var channelOpen by mutableStateOf(false)
     private var busy by mutableStateOf(false)
     private var message by mutableStateOf("")
     private var error by mutableStateOf<String?>(null)
@@ -134,6 +136,22 @@ class MainActivity : ComponentActivity() {
                     results = data
                     busy = false
                     message = if (data.isEmpty()) "Tidak ada lagu yang ditemukan" else "${data.size} lagu ditemukan"
+                    // Derive top channel from first result with uploader URL
+                    val first = data.firstOrNull { it.uploaderUrl.isNotBlank() }
+                    if (first != null) {
+                        val chId = first.uploaderUrl.substringAfter("/channel/")
+                        if (chId.isNotBlank()) {
+                            executor.execute {
+                                val ch = repo.getChannel(chId)
+                                runOnUiThread {
+                                    if (ch != null) {
+                                        channelInfo = ch.copy(videoCount = data.count { it.uploader == first.uploader })
+                                        channelOpen = false
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (_: Exception) {
                 runOnUiThread {
@@ -385,11 +403,22 @@ class MainActivity : ComponentActivity() {
             )
             Spacer(Modifier.height(14.dp))
             error?.let { ErrorCard(it) }
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = XGold)
-            if (message.isNotBlank()) Text(message, color = XMuted, modifier = Modifier.padding(vertical = 8.dp))
-            if (results.isEmpty() && !busy && error == null) WelcomeCard()
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 8.dp)) {
-                items(results, key = { it.id }) { video -> SongCard(video) }
+            if (channelInfo != null && !channelOpen) {
+                ChannelCard(channelInfo!!, {
+                    channelOpen = true
+                })
+            }
+            if (channelOpen && channelInfo != null) {
+                ChannelPage(channelInfo!!, results.filter { it.uploader == channelInfo!!.name || it.uploaderUrl.contains(channelInfo!!.id) }, {
+                    channelOpen = false
+                })
+            } else {
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = XGold)
+                if (message.isNotBlank() && !channelOpen) Text(message, color = XMuted, modifier = Modifier.padding(vertical = 8.dp))
+                if (results.isEmpty() && !busy && error == null && !channelOpen) WelcomeCard()
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 8.dp)) {
+                    items(results, key = { it.id }) { video -> SongCard(video) }
+                }
             }
         }
     }
@@ -454,6 +483,86 @@ class MainActivity : ComponentActivity() {
         } else {
             Box(Modifier.size(size).clip(RoundedCornerShape(radius)).background(XPanelHi).border(1.dp, XLine, RoundedCornerShape(radius)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.MusicNote, null, tint = XGoldDim, modifier = Modifier.size(size * 0.45f))
+            }
+        }
+    }
+
+    @Composable private fun ChannelCard(ch: YouTubeRepository.ChannelInfo, onClick: () -> Unit) {
+        Card(
+            Modifier.fillMaxWidth().clickable(onClick = onClick),
+            colors = CardDefaults.cardColors(containerColor = XPanelHi),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val bmp = remember { mutableStateOf<Bitmap?>(null) }
+                LaunchedEffect(ch.avatarUrl) {
+                    if (ch.avatarUrl.isNotBlank()) {
+                        executor.execute {
+                            val b = runCatching {
+                                val c = (URL(ch.avatarUrl).openConnection() as HttpURLConnection).apply {
+                                    connectTimeout = 6000; readTimeout = 6000; instanceFollowRedirects = true
+                                }
+                                try {
+                                    if (c.responseCode in 200..299) c.inputStream.use { BitmapFactory.decodeStream(it) } else null
+                                } finally { c.disconnect() }
+                            }.getOrNull()
+                            runOnUiThread { bmp.value = b }
+                        }
+                    }
+                }
+                Artwork(bmp.value, 56.dp, 14.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(ch.name, color = XText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${ch.videoCount} video · ${if (ch.subscriberCount > 0) ch.subscriberCount.toString() else "-"} pelanggan", color = XMuted, style = MaterialTheme.typography.bodySmall)
+                    if (ch.verified) Text("✓ Terverifikasi", color = XGoldDim, style = MaterialTheme.typography.labelSmall)
+                }
+                Icon(Icons.Default.Person, null, tint = XGoldDim, modifier = Modifier.size(28.dp))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+    }
+
+    @Composable private fun ChannelPage(ch: YouTubeRepository.ChannelInfo, videos: List<YouTubeRepository.Video>, onBack: () -> Unit) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Kembali", tint = XGold) }
+                Spacer(Modifier.width(8.dp))
+                Text(ch.name, color = XText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val bmp = remember { mutableStateOf<Bitmap?>(null) }
+                LaunchedEffect(ch.avatarUrl) {
+                    if (ch.avatarUrl.isNotBlank()) {
+                        executor.execute {
+                            val b = runCatching {
+                                val c = (URL(ch.avatarUrl).openConnection() as HttpURLConnection).apply {
+                                    connectTimeout = 6000; readTimeout = 6000; instanceFollowRedirects = true
+                                }
+                                try {
+                                    if (c.responseCode in 200..299) c.inputStream.use { BitmapFactory.decodeStream(it) } else null
+                                } finally { c.disconnect() }
+                            }.getOrNull()
+                            runOnUiThread { bmp.value = b }
+                        }
+                    }
+                }
+                Artwork(bmp.value, 72.dp, 16.dp)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(ch.name, color = XText, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                    Text("${ch.videoCount} video · ${if (ch.subscriberCount > 0) ch.subscriberCount.toString() else "-"} pelanggan", color = XMuted, style = MaterialTheme.typography.bodyMedium)
+                    if (ch.description.isNotBlank()) Text(ch.description, color = XMuted, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            if (videos.isEmpty()) {
+                Text("Video belum dimuat. Kembali dan coba lagi.", color = XMuted)
+            } else {
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
+                    items(videos, key = { it.id }) { video -> SongCard(video) }
+                }
             }
         }
     }
