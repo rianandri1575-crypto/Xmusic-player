@@ -133,6 +133,15 @@ class YouTubeRepository {
                     if (isStreamLive(s.url)) { success = s; break }
                     failed = java.io.IOException("Stream offline: HTTP unavailable")
                 }
+                // Fallback: if all probes fail but we have a real URL, use highest-bitrate
+                // (some CDNs block range GET but allow full stream).
+                if (success == null && sorted.isNotEmpty()) {
+                    val best = sorted.first()
+                    if (!isPlaceholder(best.url) && best.url.startsWith("https://")) {
+                        success = best
+                        failed = null
+                    }
+                }
                 if (success != null) return VideoStreamResult(success.url, success.mimeType)
                 throw failed ?: error("Audio tidak dapat diputar")
             } catch (e: Exception) {

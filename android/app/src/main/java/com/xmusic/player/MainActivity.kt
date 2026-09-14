@@ -234,9 +234,22 @@ class MainActivity : ComponentActivity() {
         error = null
         loadArtwork(video.thumbnail)
         executor.execute {
-            try {
-                val stream = repo.resolveAudio(video.id)
+            fun tryPlay(): YouTubeRepository.VideoStreamResult? {
+                return try {
+                    repo.resolveAudio(video.id)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            val stream = tryPlay() ?: tryPlay()
+            if (stream == null) {
                 runOnUiThread {
+                    resolving = null
+                    error = "Audio lagu ini tidak tersedia. Coba lagu lain."
+                }
+                return@execute
+            }
+            runOnUiThread {
                     ensureController { c ->
                         val mime = normalizePlayMime(stream.mimeType)
                         if (mime == null) {
@@ -266,12 +279,6 @@ class MainActivity : ComponentActivity() {
                         resolving = null
                     }
                 }
-            } catch (_: Exception) {
-                runOnUiThread {
-                    resolving = null
-                    error = "Audio lagu ini tidak tersedia. Coba lagu lain."
-                }
-            }
         }
     }
 
