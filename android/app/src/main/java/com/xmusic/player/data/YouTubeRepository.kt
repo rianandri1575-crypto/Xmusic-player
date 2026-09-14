@@ -15,18 +15,13 @@ class YouTubeRepository {
     // Piped public instances change frequently. Keep a current fallback list and
     // refresh from TeamPiped's public-instance registry when possible.
     private val fallbackInstances = listOf(
+        "https://pipedapi.ducks.party",
+        "https://api.piped.private.coffee",
         "https://pipedapi.kavin.rocks",
+        "https://pipedapi.adminforge.de",
         "https://pipedapi.leptons.xyz",
         "https://pipedapi.tokhmi.xyz",
-        "https://pipedapi.moomoo.me",
-        "https://pipedapi.syncpundit.io",
-        "https://api-piped.mha.fi",
-        "https://piped-api.garudalinux.org",
-        "https://piped-api.privacy.com.de",
-        "https://api.piped.projectsegfau.lt",
-        "https://pipedapi.adminforge.de",
-        "https://pipedapi.reallyaweso.me",
-        "https://pipedapi.drgns.space"
+        "https://api.piped.projectsegfau.lt"
     )
 
     private var discoveredInstances: List<String>? = null
@@ -63,7 +58,14 @@ class YouTubeRepository {
         var last: Exception? = null
         for (base in instances().filterNot { it in bannedInstances }) {
             try {
-                val arr = JSONArray(get("$base/search?q=$q&filter=music_songs"))
+                // New Piped format returns {"items":[...]} instead of direct array.
+                val rawText = get("$base/search?q=$q&filter=music_songs")
+                val arr = try {
+                    val obj = org.json.JSONObject(rawText)
+                    if (obj.has("items")) obj.getJSONArray("items") else JSONArray(rawText)
+                } catch (_: Exception) {
+                    JSONArray(rawText)
+                }
                 val out = ArrayList<Video>()
                 for (i in 0 until arr.length()) {
                     val o = arr.optJSONObject(i) ?: continue
