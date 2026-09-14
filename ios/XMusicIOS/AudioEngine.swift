@@ -31,4 +31,27 @@ final class AudioEngine: ObservableObject {
     }
 
     func resetEQ() { for i in gains.indices { setGain(i, 0) } }
+
+    private var file: AVAudioFile?
+
+    func playFile(url: URL) {
+        do {
+            file = try AVAudioFile(forReading: url)
+            player.stop()
+            player.scheduleFile(file!, at: nil, completionHandler: nil)
+            try engine.start()
+            player.play()
+            isPlaying = true
+        } catch {
+            isPlaying = false
+        }
+    }
+
+    func playPause() {
+        if player.isPlaying {
+            player.pause(); isPlaying = false
+        } else {
+            player.play(); isPlaying = true
+        }
+    }
 }

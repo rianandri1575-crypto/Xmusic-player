@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -78,8 +77,14 @@ class MainActivity : ComponentActivity() {
     private var controller by mutableStateOf<MediaController?>(null)
     private var controllerListener: androidx.media3.common.Player.Listener? = null
     private var controllerPending = false
+    private var resolving by mutableStateOf<String?>(null)
+    private var favTick by mutableStateOf(0)
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val localAudioPicker =
+        registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+            if (uris.isNotEmpty()) playLocalUris(uris)
+        }
     private var nowPlayingTitle by mutableStateOf("Belum ada lagu")
     private var nowPlayingArtist by mutableStateOf("")
     private var nowPlayingPlaying by mutableStateOf(false)
@@ -179,6 +184,33 @@ class MainActivity : ComponentActivity() {
             }, ContextCompat.getMainExecutor(this))
         }
     }
+    private fun playLocalUris(uris: List<android.net.Uri>) {
+        resolveControllerOrPrepare {
+            // Play first picked file for simplicity; queue could be extended.
+            val first = uris.first()
+            val item = MediaItem.Builder()
+                .setMediaId(first.toString())
+                .setUri(first)
+                .setMimeType(MimeTypes.AUDIO_MPEG) // ExoPlayer probes actual format
+                .setMediaMetadata(MediaMetadata.Builder()
+                    .setTitle("Local: " + (first.lastPathSegment ?: "File"))
+                    .build())
+                .build()
+            controller?.setMediaItem(item)
+            controller?.prepare()
+            controller?.play()
+            nowPlayingTitle = "Local: ${first.lastPathSegment ?: "File"}"
+            nowPlayingArtist = "Perangkat"
+            nowPlayingPlaying = true
+        }
+    }
+
+    private fun resolveControllerOrPrepare(onReady: (MediaController) -> Unit) {
+        controller?.let(onReady) ?: run {
+            ensureController(onReady)
+        }
+    }
+
     private fun play(video: YouTubeRepository.Video) {
         resolving = video.id
         error = null
@@ -391,9 +423,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private var resolving by mutableStateOf<String?>(null)
-    private var favTick by mutableStateOf(0)
-
     // ── Now-playing hero ───────────────────────────────────
     @Composable private fun NowPlayingHero() {
         if (nowPlayingTitle == "Belum ada lagu") return
@@ -514,6 +543,12 @@ class MainActivity : ComponentActivity() {
                     leadingIcon = { Icon(Icons.Default.Favorite, null, Modifier.size(18.dp)) })
                 FilterChip(selected = mode == 1, onClick = { mode = 1 }, label = { Text("Riwayat") },
                     leadingIcon = { Icon(Icons.Default.History, null, Modifier.size(18.dp)) })
+            }
+            Spacer(Modifier.height(6.dp))
+            Button(onClick = { localAudioPicker.launch("audio/*") }, colors = ButtonDefaults.buttonColors(containerColor = XPanelHi, contentColor = XGold)) {
+                Icon(Icons.Default.Folder, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Pilih lagu lokal", style = MaterialTheme.typography.labelMedium)
             }
             Spacer(Modifier.height(12.dp))
             if (list.isEmpty()) {
