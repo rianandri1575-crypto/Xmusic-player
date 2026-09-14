@@ -56,6 +56,7 @@ import com.xmusic.player.audio.CrossoverConfig
 import com.xmusic.player.audio.CrossoverState
 import com.xmusic.player.audio.EqualizerState
 import com.xmusic.player.data.Prefs
+import com.xmusic.player.data.UpdateChecker
 import com.xmusic.player.data.YouTubeRepository
 import com.xmusic.player.player.XMusicPlaybackService
 import java.net.HttpURLConnection
@@ -882,6 +883,8 @@ class MainActivity : ComponentActivity() {
             Spacer(Modifier.height(8.dp))
             SettingsCard(Icons.Default.Security, "Privasi", "Tanpa akun, favorit dan riwayat tersimpan lokal")
             SettingsCard(Icons.Default.Info, "XMusic 2.3", "Obsidian Gold, Android 8.0 sampai 16")
+            Spacer(Modifier.height(14.dp))
+            UpdateSection()
         }
     }
 
@@ -895,6 +898,58 @@ class MainActivity : ComponentActivity() {
                 Column {
                     Text(title, color = XText, fontWeight = FontWeight.SemiBold)
                     Text(body, color = XMuted, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+
+
+    @Composable private fun UpdateSection() {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val checker = remember { UpdateChecker() }
+        val currentVer = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "2.3" }.getOrNull() ?: "2.3"
+        val releaseInfo = remember { mutableStateOf<com.xmusic.player.data.UpdateChecker.ReleaseInfo?>(null) }
+        val loading = remember { mutableStateOf(false) }
+        Card(colors = CardDefaults.cardColors(containerColor = XPanel), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Update, null, tint = XGold, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pembaruan Aplikasi", color = XText, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Versi saat ini: $currentVer", color = XMuted, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = {
+                        loading.value = true
+                        executor.execute {
+                            val rel = checker.check()
+                            runOnUiThread {
+                                releaseInfo.value = rel
+                                loading.value = false
+                            }
+                        }
+                    },
+                    enabled = !loading.value,
+                    colors = ButtonDefaults.buttonColors(containerColor = XPanelHi, contentColor = XGold)
+                ) {
+                    Text(if (loading.value) "Memeriksa..." else "Cek Pembaruan")
+                }
+                releaseInfo.value?.let { rel ->
+                    Spacer(Modifier.height(8.dp))
+                    Text("Terbaru: ${rel.tag}", color = XGold, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                    Text("${rel.name}", color = XText, style = MaterialTheme.typography.bodySmall)
+                    Text("Ukuran: ${rel.sizeBytes / 1024 / 1024} MB", color = XMuted, style = MaterialTheme.typography.bodySmall)
+                    if (rel.body.isNotBlank()) {
+                        Text(rel.body.take(300) + if (rel.body.length > 300) "..." else "", color = XMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    rel.assetUrl?.let { url ->
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(onClick = { }) {
+                            Text("Download APK", color = XGold)
+                        }
+                    }
                 }
             }
         }
