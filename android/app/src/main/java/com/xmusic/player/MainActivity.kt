@@ -191,7 +191,6 @@ class MainActivity : ComponentActivity() {
             val item = MediaItem.Builder()
                 .setMediaId(first.toString())
                 .setUri(first)
-                .setMimeType(MimeTypes.AUDIO_MPEG) // ExoPlayer probes actual format
                 .setMediaMetadata(MediaMetadata.Builder()
                     .setTitle("Local: " + (first.lastPathSegment ?: "File"))
                     .build())
